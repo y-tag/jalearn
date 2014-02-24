@@ -22,7 +22,7 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 import myorg.io.WeightVector;
 
-public class LogRegSGDTestRunner {
+public class LinearClassifierTestRunner {
 
     public static class ReverseFloatWritableComparator implements RawComparator<FloatWritable> {
         private static final WritableComparator floatWritableComparator = new FloatWritable.Comparator();
@@ -61,7 +61,7 @@ public class LogRegSGDTestRunner {
         DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
 
         Job job = new Job(conf, "logistic regression SGD train");
-        job.setJarByClass(LogRegSGDTestRunner.class);
+        job.setJarByClass(LinearClassifierTestRunner.class);
         job.setMapperClass(LogRegSGDTestMapper.class);
         job.setReducerClass(LogRegSGDTestReducer.class);
 
