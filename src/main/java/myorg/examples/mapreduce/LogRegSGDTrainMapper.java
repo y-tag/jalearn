@@ -14,9 +14,11 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import myorg.common.EtaCalculator;
 import myorg.io.FeatureVector;
 import myorg.io.WeightVector;
 import myorg.util.SVMLightFormatParser;
+import myorg.classifier.LinearLearner;
 import myorg.classifier.LogRegSGDLearner;
 
 public class LogRegSGDTrainMapper extends Mapper<Object, Text, IntWritable, WeightVector> {
@@ -26,10 +28,8 @@ public class LogRegSGDTrainMapper extends Mapper<Object, Text, IntWritable, Weig
     public static String ETA0_CONFNAME = "myorg.examples.hadoop.LogRegSGDTrainMapper.eta0";
     public static String LAMBDA_CONFNAME = "myorg.examples.hadoop.LogRegSGDTrainMapper.lambda";
 
-    private float eta0;
-    private float lambda;
-    private WeightVector weight = new WeightVector();
-    private FeatureVector datum = new FeatureVector();
+    private LinearLearner learner;
+    private FeatureVector datum;
 
     private boolean isBiasTermUsed = true;
     private int i = 0;
@@ -39,17 +39,17 @@ public class LogRegSGDTrainMapper extends Mapper<Object, Text, IntWritable, Weig
 
         int dim    = context.getConfiguration().getInt(DIMENSION_CONFNAME, 1 << 24);
         String weightFile = context.getConfiguration().get(WEIGHTFILE_CONFNAME, "weight");
-        eta0   = context.getConfiguration().getFloat(ETA0_CONFNAME, 1e-1f);
-        lambda = context.getConfiguration().getFloat(LAMBDA_CONFNAME, 1e-6f);
+        float eta0   = context.getConfiguration().getFloat(ETA0_CONFNAME, 1e-1f);
+        float lambda = context.getConfiguration().getFloat(LAMBDA_CONFNAME, 1e-6f);
 
+        datum = new FeatureVector();
         isBiasTermUsed = true;
-        i = 0;
 
         Configuration conf = context.getConfiguration();
         Path weightPath = new Path(weightFile);
         FileSystem fs = FileSystem.getLocal(conf);
 
-        weight = null;
+        WeightVector weight = null;
         
         if (fs.exists(weightPath)) {
             System.err.println("file exists: " + weightPath.toString());
@@ -90,21 +90,20 @@ public class LogRegSGDTrainMapper extends Mapper<Object, Text, IntWritable, Weig
             throw new RuntimeException("lambda is less than or equal to 0");
         }
 
+        learner = new LogRegSGDLearner(0, lambda, new EtaCalculator(eta0, lambda), weight);
+
     }
 
     @Override
     public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
         SVMLightFormatParser.parse(value.toString(), datum, isBiasTermUsed);
-
-        float eta = eta0 / (1.0f + eta0 * lambda * i);
-        LogRegSGDLearner.learnWithStochasticOneStep(datum, eta, lambda, weight);
-        i++;
+        learner.learn(datum);
     }
 
     @Override
     protected void cleanup(Context context) throws IOException, InterruptedException {
         int id = context.getTaskAttemptID().getTaskID().getId();
-        context.write(new IntWritable(id), weight);
+        context.write(new IntWritable(id), learner.getWeight());
     }
 }
 

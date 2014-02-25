@@ -45,7 +45,7 @@ public class LinearClassifierTestRunner {
         GenericOptionsParser parser = new GenericOptionsParser(conf, args);
         args = parser.getRemainingArgs();
 
-        if (args.length < 3) {
+        if (args.length != 3) {
             System.err.println("Usage: input output weight");
             return;
         }
@@ -60,7 +60,7 @@ public class LinearClassifierTestRunner {
         DistributedCache.createSymlink(conf);
         DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
 
-        Job job = new Job(conf, "logistic regression SGD train");
+        Job job = new Job(conf, "Linear Learner Test");
         job.setJarByClass(LinearClassifierTestRunner.class);
         job.setMapperClass(LogRegSGDTestMapper.class);
         job.setReducerClass(LogRegSGDTestReducer.class);

@@ -54,7 +54,7 @@ public class LinearClassifierTrainRunner {
             DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
         }
 
-        Job job = new Job(conf, "logistic regression SGD train");
+        Job job = new Job(conf, "Logistic Regression SGD Train");
         job.setJarByClass(LinearClassifierTrainRunner.class);
         job.setMapperClass(LogRegSGDTrainMapper.class);
         job.setReducerClass(WeightVectorAverageReducer.class);
@@ -85,7 +85,7 @@ public class LinearClassifierTrainRunner {
         CommandLine cliParser = new GnuParser().parse(opts, args);
         args = cliParser.getArgs();
 
-        if (args.length < 2) {
+        if (args.length != 2) {
             printUsage(opts);
             return;
         }

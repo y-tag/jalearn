@@ -3,31 +3,34 @@ package myorg.classifier;
 import java.util.List;
 import java.util.Random;
 
+import myorg.common.EtaCalculator;
 import myorg.io.FeatureVector;
 import myorg.io.WeightVector;
 
-public class LogRegSGDLearner {
+public class LogRegSGDLearner implements LinearLearner {
 
-    public static void learnWithStochasticLoop(
-       List<FeatureVector> fVecList,
-       float eta0, float lambda, int numIters, WeightVector w
-    ) {
-        if (w == null) {
-            return;
-        }
+    private long n;
+    private float lambda;
+    private EtaCalculator eCalc;
+    private WeightVector w;
 
-        int dataSize = fVecList.size();
+    public LogRegSGDLearner(long n, float lambda, EtaCalculator eCalc, WeightVector w) {
+        this.n = n;
+        this.lambda = lambda;
+        this.eCalc = eCalc;
+        this.w  = w;
+    }
 
-        Random rnd = new Random(0x5EED);
+    public float learn(FeatureVector fVec) {
+        return learnWithStochasticOneStep(fVec, eCalc.get(n++), lambda, w);
+    }
 
-        for (int i = 1; i <= numIters; i++) {
-            float eta = eta0 / (1.0f + eta0 * lambda * i);
+    public void setWeight(WeightVector w) {
+        this.w = w;
+    }
 
-            int idx = rnd.nextInt(dataSize);
-            FeatureVector fVec = fVecList.get(idx);
-
-            learnWithStochasticOneStep(fVec, eta, lambda, w);
-        }
+    public WeightVector getWeight() {
+        return w;
     }
 
     public static float learnWithStochasticOneStep(
