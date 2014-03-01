@@ -26,26 +26,9 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 import myorg.io.WeightVector;
 
-public class LinearClassifierTrainRunner {
+public class LinearLearnerTrainRunner {
 
-    public static void initOptions(Options opts) {
-        opts.addOption("modelType", true,
-            "Type of model and learning method.\n" +
-            "0: Logistic regression using SGD"
-        );
-        opts.addOption("dim", true, "Number of weight vector dimension.");
-        opts.addOption("eta0", true, "Initial value of learning rate.");
-        opts.addOption("lambda", true, "Regularization parameter.");
-        opts.addOption("weightPath", true, "Initial weight file path.");
-    }
-
-    private static void printUsage(Options opts) {
-        HelpFormatter formatter = new HelpFormatter();
-        formatter.setWidth(60);
-        formatter.printHelp("myorg.examples.mapreduce.LinearClassifierTrainRunner input output", opts);
-    }
-
-    public Job initLogRegSGD(Configuration conf, String input, String output,
+    public Job initLogRegSGD(Configuration conf, int iter, int nIter,
                              int dim, float eta0, float lambda, String weightPath) throws Exception {
         conf.setInt(LogRegSGDTrainMapper.DIMENSION_CONFNAME, dim);
         conf.setFloat(LogRegSGDTrainMapper.ETA0_CONFNAME, eta0);
@@ -59,12 +42,12 @@ public class LinearClassifierTrainRunner {
             DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
         }
 
-        Job job = new Job(conf, "Logistic Regression SGD Train");
-        job.setJarByClass(LinearClassifierTrainRunner.class);
+        String jobName = String.format("Logistic Regression SGD Train (%d in %d)", iter, nIter);
+
+        Job job = new Job(conf, jobName);
+        job.setJarByClass(LinearLearnerTrainRunner.class);
         job.setMapperClass(LogRegSGDTrainMapper.class);
         job.setReducerClass(WeightVectorAverageReducer.class);
-
-        job.setNumReduceTasks(1);
 
         job.setMapOutputKeyClass(IntWritable.class);
         job.setMapOutputValueClass(WeightVector.class);
@@ -74,10 +57,13 @@ public class LinearClassifierTrainRunner {
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
-        FileInputFormat.addInputPath(job, new Path(input));
-        FileOutputFormat.setOutputPath(job, new Path(output));
-
         return job;
+    }
+
+    private static void printUsage(Options opts) {
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.setWidth(80);
+        formatter.printHelp("myorg.examples.mapreduce.LinearLearnerTrainRunner input output_base", opts);
     }
     
     public static void main(String[] args) throws Exception {
@@ -86,38 +72,59 @@ public class LinearClassifierTrainRunner {
         args = parser.getRemainingArgs();
 
         Options opts = new Options();
-        initOptions(opts);
+        opts.addOption("modelType", true,
+            "Type of model and learning method.\n" +
+            "0: Logistic regression using SGD and simple weight averaging"
+        );
+        opts.addOption("dim", true, "Number of weight vector dimension.");
+        opts.addOption("eta0", true, "Initial value of learning rate.");
+        opts.addOption("lambda", true, "Regularization parameter.");
+        opts.addOption("weightPath", true, "Initial weight file path.");
+        opts.addOption("nIter", true, "Number of MapReduce Iterations.");
+
         CommandLine cliParser = new GnuParser().parse(opts, args);
         args = cliParser.getArgs();
-
-        if (args.length != 2) {
-            printUsage(opts);
-            return;
-        }
-        String input = args[0];
-        String output = args[1];
 
         int modelType = Integer.parseInt(cliParser.getOptionValue("modelType", "0"));
         int dim = Integer.parseInt(cliParser.getOptionValue("dim", "16777216"));
         float eta0 = Float.parseFloat(cliParser.getOptionValue("eta0", "1e-1"));
         float lambda = Float.parseFloat(cliParser.getOptionValue("lambda", "1e-6"));
         String weightPath = cliParser.getOptionValue("weightPath", "");
+        int nIter = Integer.parseInt(cliParser.getOptionValue("nIter", "1"));
 
-        LinearClassifierTrainRunner trainRunner = new LinearClassifierTrainRunner();
-
-        Job job = null;
-
-        if (modelType == 0) {
-            job = trainRunner.initLogRegSGD(conf, input, output, dim, eta0, lambda, weightPath);
-        } else {
-            System.err.println("unkown modelType: " + modelType);
+        if (args.length != 2) {
+            printUsage(opts);
             return;
         }
+        String input = args[0];
+        String outputBase = args[1];
 
-        FileOutputFormat.setCompressOutput(job, true);
-        FileOutputFormat.setOutputCompressorClass(job, org.apache.hadoop.io.compress.GzipCodec.class);
+        LinearLearnerTrainRunner trainRunner = new LinearLearnerTrainRunner();
 
-        job.waitForCompletion(true);
+        for (int iter = 0; iter < nIter; iter++) {
+            String output = String.format("%s/iter-%05d", outputBase, iter);
+
+            Job job = null;
+            Configuration copiedConf = new Configuration(conf);
+
+            if (modelType == 0) {
+                job = trainRunner.initLogRegSGD(copiedConf, iter, nIter, dim, eta0, lambda, weightPath);
+            } else {
+                System.err.println("unkown modelType: " + modelType);
+                return;
+            }
+
+            job.setNumReduceTasks(1);
+
+            FileInputFormat.addInputPath(job, new Path(input));
+            FileOutputFormat.setOutputPath(job, new Path(output));
+            FileOutputFormat.setCompressOutput(job, true);
+            FileOutputFormat.setOutputCompressorClass(job, org.apache.hadoop.io.compress.GzipCodec.class);
+
+            job.waitForCompletion(true);
+
+            weightPath = output + "/part-r-00000";
+        }
     }
 }
 
