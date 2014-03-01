@@ -54,34 +54,33 @@ public class LinearLearnerTestRunner {
         String weightPath = args[2];
 
         String cacheName = "weight";
-
         conf.set(LinearLearnerTestMapper.WEIGHTFILE_CONFNAME, cacheName);
-
         DistributedCache.createSymlink(conf);
         DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
 
-        Job job = new Job(conf, "Linear Learner Test");
+        String jobName = "Linear Learner Test";
+
+        Job job = new Job(conf, jobName);
         job.setJarByClass(LinearLearnerTestRunner.class);
         job.setMapperClass(LinearLearnerTestMapper.class);
         job.setReducerClass(LinearLearnerTestReducer.class);
 
         job.setSortComparatorClass(ReverseFloatWritableComparator.class);
 
-        job.setNumReduceTasks(1);
-
         job.setMapOutputKeyClass(FloatWritable.class);
         job.setMapOutputValueClass(IntWritable.class);
-        job.setOutputKeyClass(IntWritable.class);
-        job.setOutputValueClass(FloatWritable.class);
-
-        FileInputFormat.addInputPath(job, new Path(input));
-
-        FileOutputFormat.setOutputPath(job, new Path(output));
-        FileOutputFormat.setCompressOutput(job, true);
-        FileOutputFormat.setOutputCompressorClass(job, org.apache.hadoop.io.compress.GzipCodec.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
 
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
+
+        job.setNumReduceTasks(1);
+
+        FileInputFormat.addInputPath(job, new Path(input));
+        FileOutputFormat.setOutputPath(job, new Path(output));
+        FileOutputFormat.setCompressOutput(job, true);
+        FileOutputFormat.setOutputCompressorClass(job, org.apache.hadoop.io.compress.GzipCodec.class);
 
         job.waitForCompletion(true);
     }
