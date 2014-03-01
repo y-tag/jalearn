@@ -29,7 +29,10 @@ import myorg.io.WeightVector;
 public class LinearClassifierTrainRunner {
 
     public static void initOptions(Options opts) {
-        opts.addOption("modelType", true, "Type of model and learning method.");
+        opts.addOption("modelType", true,
+            "Type of model and learning method.\n" +
+            "0: Logistic regression using SGD"
+        );
         opts.addOption("dim", true, "Number of weight vector dimension.");
         opts.addOption("eta0", true, "Initial value of learning rate.");
         opts.addOption("lambda", true, "Regularization parameter.");
@@ -37,7 +40,9 @@ public class LinearClassifierTrainRunner {
     }
 
     private static void printUsage(Options opts) {
-        new HelpFormatter().printHelp("myorg.examples.mapreduce.LinearClassifierTrainRunner input output", opts);
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.setWidth(60);
+        formatter.printHelp("myorg.examples.mapreduce.LinearClassifierTrainRunner input output", opts);
     }
 
     public Job initLogRegSGD(Configuration conf, String input, String output,
@@ -49,7 +54,7 @@ public class LinearClassifierTrainRunner {
 
         if (weightPath != null && weightPath != "") {
             String cacheName = "weight";
-            conf.set(LogRegSGDTestMapper.WEIGHTFILE_CONFNAME, cacheName);
+            conf.set(LogRegSGDTrainMapper.WEIGHTFILE_CONFNAME, cacheName);
             DistributedCache.createSymlink(conf);
             DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
         }
@@ -100,7 +105,14 @@ public class LinearClassifierTrainRunner {
 
         LinearClassifierTrainRunner trainRunner = new LinearClassifierTrainRunner();
 
-        Job job = trainRunner.initLogRegSGD(conf, input, output, dim, eta0, lambda, weightPath);
+        Job job = null;
+
+        if (modelType == 0) {
+            job = trainRunner.initLogRegSGD(conf, input, output, dim, eta0, lambda, weightPath);
+        } else {
+            System.err.println("unkown modelType: " + modelType);
+            return;
+        }
 
         FileOutputFormat.setCompressOutput(job, true);
         FileOutputFormat.setOutputCompressorClass(job, org.apache.hadoop.io.compress.GzipCodec.class);
