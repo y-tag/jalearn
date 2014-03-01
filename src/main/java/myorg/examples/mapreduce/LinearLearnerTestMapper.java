@@ -25,11 +25,13 @@ import myorg.util.SVMLightFormatParser;
 public class LinearLearnerTestMapper extends Mapper<Object, Text, FloatWritable, IntWritable> {
 
     public static String WEIGHTFILE_CONFNAME = "myorg.examples.hadoop.LinearLearnerTestMapper.weightFile";
+    public static String LOGISTIC_CONFNAME = "myorg.examples.hadoop.LinearLearnerTestMapper.logistic";
 
     private String weightFile;
     private WeightVector weight;
     private FeatureVector datum;
     private boolean isBiasTermUsed = true;
+    private boolean isLogisticUsed = false;
 
     private FloatWritable outKey;
     private IntWritable outVal;
@@ -41,6 +43,7 @@ public class LinearLearnerTestMapper extends Mapper<Object, Text, FloatWritable,
         weight = new WeightVector();
         datum = new FeatureVector();
         isBiasTermUsed = true;
+        isLogisticUsed = context.getConfiguration().getBoolean(LOGISTIC_CONFNAME, false);
 
         outKey = new FloatWritable();
         outVal = new IntWritable();
@@ -76,7 +79,9 @@ public class LinearLearnerTestMapper extends Mapper<Object, Text, FloatWritable,
         SVMLightFormatParser.parse(value.toString(), datum, isBiasTermUsed);
 
         float prediction = weight.innerProduct(datum);
-        prediction = 1.0f / (1.0f + (float)Math.exp(-prediction));
+        if (isLogisticUsed) {
+            prediction = 1.0f / (1.0f + (float)Math.exp(-prediction));
+        }
         
         outKey.set(prediction);
         outVal.set((int)datum.getLabel());

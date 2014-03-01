@@ -2,6 +2,13 @@ package myorg.examples.mapreduce;
 
 import java.net.URI;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
@@ -44,6 +51,14 @@ public class LinearLearnerTestRunner {
         Configuration conf = new Configuration();
         GenericOptionsParser parser = new GenericOptionsParser(conf, args);
         args = parser.getRemainingArgs();
+
+        Options opts = new Options();
+        opts.addOption("logistic", false, "Use logistic function for prediction.");
+
+        CommandLine cliParser = new GnuParser().parse(opts, args);
+        args = cliParser.getArgs();
+
+        conf.setBoolean(LinearLearnerTestMapper.LOGISTIC_CONFNAME, cliParser.hasOption("logistic"));
 
         if (args.length != 3) {
             System.err.println("Usage: input output weight");
