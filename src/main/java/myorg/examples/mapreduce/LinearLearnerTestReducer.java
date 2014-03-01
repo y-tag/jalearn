@@ -8,7 +8,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.mapreduce.Reducer;
 
-public class LogRegSGDTestReducer extends Reducer<FloatWritable, IntWritable, IntWritable, FloatWritable> {
+public class LinearLearnerTestReducer extends Reducer<FloatWritable, IntWritable, IntWritable, FloatWritable> {
 
     double curAUC;
     double oldPosSum;
@@ -28,7 +28,6 @@ public class LogRegSGDTestReducer extends Reducer<FloatWritable, IntWritable, In
     @Override
     protected void reduce(FloatWritable key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
         for (IntWritable value : values) {
-            //context.write(key, value);
             if (value.get() > 0) {
                 posSum += 1.0;
             } else {

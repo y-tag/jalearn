@@ -22,7 +22,7 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 import myorg.io.WeightVector;
 
-public class LinearClassifierTestRunner {
+public class LinearLearnerTestRunner {
 
     public static class ReverseFloatWritableComparator implements RawComparator<FloatWritable> {
         private static final WritableComparator floatWritableComparator = new FloatWritable.Comparator();
@@ -55,15 +55,15 @@ public class LinearClassifierTestRunner {
 
         String cacheName = "weight";
 
-        conf.set(LogRegSGDTestMapper.WEIGHTFILE_CONFNAME, cacheName);
+        conf.set(LinearLearnerTestMapper.WEIGHTFILE_CONFNAME, cacheName);
 
         DistributedCache.createSymlink(conf);
         DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
 
         Job job = new Job(conf, "Linear Learner Test");
-        job.setJarByClass(LinearClassifierTestRunner.class);
-        job.setMapperClass(LogRegSGDTestMapper.class);
-        job.setReducerClass(LogRegSGDTestReducer.class);
+        job.setJarByClass(LinearLearnerTestRunner.class);
+        job.setMapperClass(LinearLearnerTestMapper.class);
+        job.setReducerClass(LinearLearnerTestReducer.class);
 
         job.setSortComparatorClass(ReverseFloatWritableComparator.class);
 

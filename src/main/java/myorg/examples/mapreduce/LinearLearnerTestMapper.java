@@ -21,11 +21,10 @@ import org.apache.hadoop.mapreduce.Mapper;
 import myorg.io.FeatureVector;
 import myorg.io.WeightVector;
 import myorg.util.SVMLightFormatParser;
-import myorg.classifier.LogRegSGDLearner;
 
-public class LogRegSGDTestMapper extends Mapper<Object, Text, FloatWritable, IntWritable> {
+public class LinearLearnerTestMapper extends Mapper<Object, Text, FloatWritable, IntWritable> {
 
-    public static String WEIGHTFILE_CONFNAME = "myorg.examples.hadoop.LogRegSGDTestMapper.weightFile";
+    public static String WEIGHTFILE_CONFNAME = "myorg.examples.hadoop.LinearLearnerTestMapper.weightFile";
 
     private String weightFile;
     private WeightVector weight;
