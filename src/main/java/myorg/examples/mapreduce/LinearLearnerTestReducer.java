@@ -33,7 +33,7 @@ public class LinearLearnerTestReducer extends Reducer<FloatWritable, IntWritable
         curNLL = 0.0;
 
         oldPosSum = 0.0;
-        oldPrecision = 1.0;
+        oldPrecision = 0.0;
         posNum = 0.0;
         posSum = 0.0;
         negNum = 0.0;
@@ -74,6 +74,12 @@ public class LinearLearnerTestReducer extends Reducer<FloatWritable, IntWritable
     protected void cleanup(Context context) throws IOException, InterruptedException {
         context.write(new Text("Number of samples"),
                       new Text(String.valueOf((long)(posSum + negSum))));
+
+        context.write(new Text("Number of positive samples"),
+                      new Text(String.valueOf((long)posSum)));
+
+        context.write(new Text("Number of negative samples"),
+                      new Text(String.valueOf((long)negSum)));
 
         curAUROC /= (posSum * negSum);
         context.write(new Text("AUC"),
