@@ -60,6 +60,69 @@ public class LinearLearnerTrainRunner {
         return job;
     }
 
+    public Job initPAReg(Configuration conf, int iter, int nIter,
+                         int dim, float C, float epsilon, String weightPath) throws Exception {
+        conf.setInt(PARegTrainMapper.DIMENSION_CONFNAME, dim);
+        conf.setFloat(PARegTrainMapper.C_CONFNAME, C);
+        conf.setFloat(PARegTrainMapper.EPSILON_CONFNAME, epsilon);
+        conf.setInt(WeightVectorAverageReducer.DIMENSION_CONFNAME, dim);
+
+        if (weightPath != null && weightPath != "") {
+            String cacheName = "weight";
+            conf.set(PARegTrainMapper.WEIGHTFILE_CONFNAME, cacheName);
+            DistributedCache.createSymlink(conf);
+            DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
+        }
+
+        String jobName = String.format("PassiveAggressive Regression Train (%d in %d)", iter, nIter);
+
+        Job job = new Job(conf, jobName);
+        job.setJarByClass(LinearLearnerTrainRunner.class);
+        job.setMapperClass(PARegTrainMapper.class);
+        job.setReducerClass(WeightVectorAverageReducer.class);
+
+        job.setMapOutputKeyClass(IntWritable.class);
+        job.setMapOutputValueClass(WeightVector.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(WeightVector.class);
+
+        job.setInputFormatClass(TextInputFormat.class);
+        job.setOutputFormatClass(SequenceFileOutputFormat.class);
+
+        return job;
+    }
+
+    public Job initAROWReg(Configuration conf, int iter, int nIter,
+                           int dim, float r, String weightPath) throws Exception {
+        conf.setInt(AROWRegTrainMapper.DIMENSION_CONFNAME, dim);
+        conf.setFloat(AROWRegTrainMapper.R_CONFNAME, r);
+        conf.setInt(WeightVectorAverageReducer.DIMENSION_CONFNAME, dim);
+
+        if (weightPath != null && weightPath != "") {
+            String cacheName = "weight";
+            conf.set(AROWRegTrainMapper.WEIGHTFILE_CONFNAME, cacheName);
+            DistributedCache.createSymlink(conf);
+            DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
+        }
+
+        String jobName = String.format("AROW Regression Train (%d in %d)", iter, nIter);
+
+        Job job = new Job(conf, jobName);
+        job.setJarByClass(LinearLearnerTrainRunner.class);
+        job.setMapperClass(AROWRegTrainMapper.class);
+        job.setReducerClass(WeightVectorAverageReducer.class);
+
+        job.setMapOutputKeyClass(IntWritable.class);
+        job.setMapOutputValueClass(WeightVector.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(WeightVector.class);
+
+        job.setInputFormatClass(TextInputFormat.class);
+        job.setOutputFormatClass(SequenceFileOutputFormat.class);
+
+        return job;
+    }
+
     private static void printUsage(Options opts) {
         HelpFormatter formatter = new HelpFormatter();
         formatter.setWidth(80);
@@ -74,11 +137,15 @@ public class LinearLearnerTrainRunner {
         Options opts = new Options();
         opts.addOption("modelType", true,
             "Type of model and learning method.\n" +
-            "0: Logistic regression using SGD and simple weight averaging"
+            "0: Logistic regression using SGD and simple weight averaging\n" +
+            "1: PassiveAggressive regression using simple weight averaging"
         );
         opts.addOption("dim", true, "Number of weight vector dimension.");
         opts.addOption("eta0", true, "Initial value of learning rate.");
         opts.addOption("lambda", true, "Regularization parameter.");
+        opts.addOption("C", true, "Aggressiveness parameter.");
+        opts.addOption("epsilon", true, "Regression tolerance.");
+        opts.addOption("r", true, "Aggressiveness parameter.");
         opts.addOption("weightPath", true, "Initial weight file path.");
         opts.addOption("nIter", true, "Number of MapReduce Iterations.");
 
@@ -88,7 +155,10 @@ public class LinearLearnerTrainRunner {
         int modelType = Integer.parseInt(cliParser.getOptionValue("modelType", "0"));
         int dim = Integer.parseInt(cliParser.getOptionValue("dim", "16777216"));
         float eta0 = Float.parseFloat(cliParser.getOptionValue("eta0", "1e-1"));
-        float lambda = Float.parseFloat(cliParser.getOptionValue("lambda", "1e-6"));
+        float lambda = Float.parseFloat(cliParser.getOptionValue("lambda", "1e-3"));
+        float C = Float.parseFloat(cliParser.getOptionValue("C", "1.0"));
+        float epsilon = Float.parseFloat(cliParser.getOptionValue("epsilon", "0.1"));
+        float r = Float.parseFloat(cliParser.getOptionValue("r", "1.0"));
         String weightPath = cliParser.getOptionValue("weightPath", "");
         int nIter = Integer.parseInt(cliParser.getOptionValue("nIter", "1"));
 
@@ -109,6 +179,10 @@ public class LinearLearnerTrainRunner {
 
             if (modelType == 0) {
                 job = trainRunner.initLogRegSGD(copiedConf, iter, nIter, dim, eta0, lambda, weightPath);
+            } else if (modelType == 1) {
+                job = trainRunner.initPAReg(copiedConf, iter, nIter, dim, C, epsilon, weightPath);
+            } else if (modelType == 2) {
+                job = trainRunner.initAROWReg(copiedConf, iter, nIter, dim, r, weightPath);
             } else {
                 System.err.println("unkown modelType: " + modelType);
                 return;
