@@ -14,11 +14,11 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import myorg.common.LinearLearner;
 import myorg.common.EtaCalculator;
 import myorg.io.FeatureVector;
 import myorg.io.WeightVector;
 import myorg.util.SVMLightFormatParser;
-import myorg.classifier.LinearLearner;
 import myorg.classifier.LogRegSGDLearner;
 
 public class LogRegSGDTrainMapper extends Mapper<Object, Text, IntWritable, WeightVector> {

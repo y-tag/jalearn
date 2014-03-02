@@ -1,4 +1,4 @@
-package myorg.classifier;
+package myorg.common;
 
 import myorg.io.FeatureVector;
 import myorg.io.WeightVector;

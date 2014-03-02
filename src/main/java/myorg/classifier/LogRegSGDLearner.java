@@ -3,6 +3,7 @@ package myorg.classifier;
 import java.util.List;
 import java.util.Random;
 
+import myorg.common.LinearLearner;
 import myorg.common.EtaCalculator;
 import myorg.io.FeatureVector;
 import myorg.io.WeightVector;
