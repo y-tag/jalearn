@@ -25,6 +25,7 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import myorg.io.WeightVector;
+import myorg.io.PartedWeightVector;
 
 public class LinearLearnerTrainRunner {
 
@@ -33,11 +34,9 @@ public class LinearLearnerTrainRunner {
         conf.setInt(LogRegSGDTrainMapper.DIMENSION_CONFNAME, dim);
         conf.setFloat(LogRegSGDTrainMapper.ETA0_CONFNAME, eta0);
         conf.setFloat(LogRegSGDTrainMapper.LAMBDA_CONFNAME, lambda);
-        conf.setInt(WeightVectorAverageReducer.DIMENSION_CONFNAME, dim);
 
         if (weightPath != null && weightPath != "") {
             String cacheName = "weight";
-            conf.set(LogRegSGDTrainMapper.WEIGHTFILE_CONFNAME, cacheName);
             DistributedCache.createSymlink(conf);
             DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
         }
@@ -50,7 +49,7 @@ public class LinearLearnerTrainRunner {
         job.setReducerClass(WeightVectorAverageReducer.class);
 
         job.setMapOutputKeyClass(IntWritable.class);
-        job.setMapOutputValueClass(WeightVector.class);
+        job.setMapOutputValueClass(PartedWeightVector.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(WeightVector.class);
 
@@ -65,11 +64,9 @@ public class LinearLearnerTrainRunner {
         conf.setInt(PARegTrainMapper.DIMENSION_CONFNAME, dim);
         conf.setFloat(PARegTrainMapper.C_CONFNAME, C);
         conf.setFloat(PARegTrainMapper.EPSILON_CONFNAME, epsilon);
-        conf.setInt(WeightVectorAverageReducer.DIMENSION_CONFNAME, dim);
 
         if (weightPath != null && weightPath != "") {
             String cacheName = "weight";
-            conf.set(PARegTrainMapper.WEIGHTFILE_CONFNAME, cacheName);
             DistributedCache.createSymlink(conf);
             DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
         }
@@ -82,7 +79,7 @@ public class LinearLearnerTrainRunner {
         job.setReducerClass(WeightVectorAverageReducer.class);
 
         job.setMapOutputKeyClass(IntWritable.class);
-        job.setMapOutputValueClass(WeightVector.class);
+        job.setMapOutputValueClass(PartedWeightVector.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(WeightVector.class);
 
@@ -96,11 +93,9 @@ public class LinearLearnerTrainRunner {
                            int dim, float r, String weightPath) throws Exception {
         conf.setInt(AROWRegTrainMapper.DIMENSION_CONFNAME, dim);
         conf.setFloat(AROWRegTrainMapper.R_CONFNAME, r);
-        conf.setInt(WeightVectorAverageReducer.DIMENSION_CONFNAME, dim);
 
         if (weightPath != null && weightPath != "") {
             String cacheName = "weight";
-            conf.set(AROWRegTrainMapper.WEIGHTFILE_CONFNAME, cacheName);
             DistributedCache.createSymlink(conf);
             DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
         }
@@ -113,7 +108,7 @@ public class LinearLearnerTrainRunner {
         job.setReducerClass(WeightVectorAverageReducer.class);
 
         job.setMapOutputKeyClass(IntWritable.class);
-        job.setMapOutputValueClass(WeightVector.class);
+        job.setMapOutputValueClass(PartedWeightVector.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(WeightVector.class);
 
@@ -155,7 +150,7 @@ public class LinearLearnerTrainRunner {
         int modelType = Integer.parseInt(cliParser.getOptionValue("modelType", "0"));
         int dim = Integer.parseInt(cliParser.getOptionValue("dim", "16777216"));
         float eta0 = Float.parseFloat(cliParser.getOptionValue("eta0", "1e-1"));
-        float lambda = Float.parseFloat(cliParser.getOptionValue("lambda", "1e-3"));
+        float lambda = Float.parseFloat(cliParser.getOptionValue("lambda", "1e-7"));
         float C = Float.parseFloat(cliParser.getOptionValue("C", "1.0"));
         float epsilon = Float.parseFloat(cliParser.getOptionValue("epsilon", "0.1"));
         float r = Float.parseFloat(cliParser.getOptionValue("r", "1.0"));

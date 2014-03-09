@@ -7,29 +7,24 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import myorg.io.WeightVector;
+import myorg.io.PartedWeightVector;
 
-public class WeightVectorAverageReducer extends Reducer<IntWritable, WeightVector, Text, WeightVector> {
-
-    public static String DIMENSION_CONFNAME = "myorg.examples.hadoop.WeightVectorAverageReducer.dim";
-
-    private int dim;
+public class WeightVectorAverageReducer extends Reducer<IntWritable, PartedWeightVector, Text, WeightVector> {
     private int num;
     private WeightVector weight;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-        dim = context.getConfiguration().getInt(DIMENSION_CONFNAME, 1 << 24);
         num = 0;
-
-        weight = new WeightVector(dim);
+        weight = new WeightVector();
     }
 
     @Override
-    protected void reduce(IntWritable key, Iterable<WeightVector> values, Context context) throws IOException, InterruptedException {
-        for (WeightVector value : values) {
+    protected void reduce(IntWritable key, Iterable<PartedWeightVector> values, Context context) throws IOException, InterruptedException {
+        for (PartedWeightVector value : values) {
             weight.addVector(value);
-            num++;
         }
+        num++;
     }
 
     @Override
