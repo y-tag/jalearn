@@ -49,28 +49,33 @@ public class LinearLearnerTestMapper extends Mapper<Object, Text, FloatWritable,
         outVal = new IntWritable();
 
         Configuration conf = context.getConfiguration();
-        Path path = new Path(weightFile);
         FileSystem fs = FileSystem.getLocal(conf);
 
-        SequenceFile.Reader reader = new SequenceFile.Reader(fs, path, conf);
-        try {
-            Class<?> keyClass = reader.getKeyClass();
+        Path[] cacheFiles = DistributedCache.getLocalCacheFiles(conf);
 
-            Writable key;
-            if (keyClass == NullWritable.class) {
-                key = NullWritable.get();
-            } else {
-                key = (Writable) keyClass.newInstance();
-            }
+        if (cacheFiles != null) {
+            for (int i = 0; i < cacheFiles.length; i++) {
+                System.err.println(String.format("read cacheFiles[%d]: %s", i, cacheFiles[i].toString()));
+                SequenceFile.Reader reader = new SequenceFile.Reader(fs, cacheFiles[i], conf);
+                try {
+                    Class<?> keyClass = reader.getKeyClass();
+                    Class<?> valClass = reader.getValueClass();
 
-            while (reader.next(key, weight)) {
-                break;
+                    if (keyClass == Text.class && valClass == WeightVector.class) {
+                        Text key = new Text();
+                        weight = new WeightVector();
+
+                        while (reader.next(key, weight)) {
+                            break;
+                        }
+                    }
+
+                } catch (Exception e) {
+                } finally {
+                    reader.close();
+                }
             }
-        } catch (Exception e) {
-        } finally {
-            reader.close();
         }
-    
 
     }
 
