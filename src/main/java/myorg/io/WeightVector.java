@@ -3,6 +3,8 @@ package myorg.io;
 import java.io.IOException;
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.StringTokenizer;
@@ -100,6 +102,29 @@ public class WeightVector implements Writable {
         }
     }
 
+    public void addVector(PartedWeightVector x) {
+        addVector(x, 1.0f);
+    }
+
+    public void addVector(PartedWeightVector x, float xScale) {
+        float s = xScale / scaleFactor;
+
+        if (x.getDimensions() > dim) {
+            float[] newArray = new float[x.getDimensions()];
+            for (int i = 0; i < dim; i++) {
+                newArray[i] = weightArray[i];
+            }
+            weightArray = newArray;
+            dim = x.getDimensions();
+        }
+
+        for (int i = x.getOffset(); i < x.getOffset() + x.getSize(); i++) {
+            squaredNorm -= weightArray[i] * weightArray[i];
+            weightArray[i] += x.getValue(i) * s;
+            squaredNorm += weightArray[i] * weightArray[i];
+        }
+    }
+
     public void addVector(float[] x) {
         addVector(x, 1.0f);
     }
@@ -153,6 +178,25 @@ public class WeightVector implements Writable {
         if (index < dim) {
             weightArray[index] = value / scaleFactor;
         }
+    }
+
+    public List<PartedWeightVector> splitAsPartedWeightVector(int splitSize) {
+        List<PartedWeightVector> list = new ArrayList<PartedWeightVector>();
+        int offset = 0;
+
+        while (offset < dim) {
+            int size = (offset + splitSize < dim) ? splitSize : dim-offset;
+
+            PartedWeightVector pwv = new PartedWeightVector(dim, offset, size);
+            for (int i = offset; i < offset + size; i++) {
+                pwv.setValue(i, getValue(i));
+            }
+            list.add(pwv);
+
+            offset += size;
+        }
+
+        return list;
     }
 
     @Override
