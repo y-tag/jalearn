@@ -19,14 +19,17 @@ public class AROWRegLearner implements LinearLearner {
         this.sigma = sigma;
     }
 
+    @Override
     public float learn(FeatureVector fVec) {
         return learnWithOneStep(fVec, r, w, sigma);
     }
 
+    @Override
     public void setWeight(WeightVector w) {
         this.w = w;
     }
 
+    @Override
     public WeightVector getWeight() {
         return w;
     }

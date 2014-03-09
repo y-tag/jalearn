@@ -22,14 +22,17 @@ public class LogRegSGDLearner implements LinearLearner {
         this.w  = w;
     }
 
+    @Override
     public float learn(FeatureVector fVec) {
         return learnWithStochasticOneStep(fVec, eCalc.get(n++), lambda, w);
     }
 
+    @Override
     public void setWeight(WeightVector w) {
         this.w = w;
     }
 
+    @Override
     public WeightVector getWeight() {
         return w;
     }

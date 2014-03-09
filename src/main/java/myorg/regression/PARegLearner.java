@@ -51,16 +51,19 @@ public class PARegLearner implements LinearLearner {
         this.w  = w;
     }
 
+    @Override
     public float learn(FeatureVector fVec) {
         vc.add(fVec.getLabel());
         float stddev = (float)Math.sqrt(vc.get());
         return learnWithOneStep(fVec, paType, C, epsilon, stddev, w);
     }
 
+    @Override
     public void setWeight(WeightVector w) {
         this.w = w;
     }
 
+    @Override
     public WeightVector getWeight() {
         return w;
     }
