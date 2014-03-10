@@ -29,95 +29,6 @@ import myorg.io.PartedWeightVector;
 
 public class LinearLearnerTrainRunner {
 
-    public Job initLogRegSGD(Configuration conf, int iter, int nIter,
-                             int dim, float eta0, float lambda, String weightPath) throws Exception {
-        conf.setInt(LogRegSGDTrainMapper.DIMENSION_CONFNAME, dim);
-        conf.setFloat(LogRegSGDTrainMapper.ETA0_CONFNAME, eta0);
-        conf.setFloat(LogRegSGDTrainMapper.LAMBDA_CONFNAME, lambda);
-
-        if (weightPath != null && weightPath != "") {
-            String cacheName = "weight";
-            DistributedCache.createSymlink(conf);
-            DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
-        }
-
-        String jobName = String.format("Logistic Regression SGD Train (%d in %d)", iter, nIter);
-
-        Job job = new Job(conf, jobName);
-        job.setJarByClass(LinearLearnerTrainRunner.class);
-        job.setMapperClass(LogRegSGDTrainMapper.class);
-        job.setReducerClass(WeightVectorAverageReducer.class);
-
-        job.setMapOutputKeyClass(IntWritable.class);
-        job.setMapOutputValueClass(PartedWeightVector.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(WeightVector.class);
-
-        job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
-        return job;
-    }
-
-    public Job initPAReg(Configuration conf, int iter, int nIter,
-                         int dim, float C, float epsilon, String weightPath) throws Exception {
-        conf.setInt(PARegTrainMapper.DIMENSION_CONFNAME, dim);
-        conf.setFloat(PARegTrainMapper.C_CONFNAME, C);
-        conf.setFloat(PARegTrainMapper.EPSILON_CONFNAME, epsilon);
-
-        if (weightPath != null && weightPath != "") {
-            String cacheName = "weight";
-            DistributedCache.createSymlink(conf);
-            DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
-        }
-
-        String jobName = String.format("PassiveAggressive Regression Train (%d in %d)", iter, nIter);
-
-        Job job = new Job(conf, jobName);
-        job.setJarByClass(LinearLearnerTrainRunner.class);
-        job.setMapperClass(PARegTrainMapper.class);
-        job.setReducerClass(WeightVectorAverageReducer.class);
-
-        job.setMapOutputKeyClass(IntWritable.class);
-        job.setMapOutputValueClass(PartedWeightVector.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(WeightVector.class);
-
-        job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
-        return job;
-    }
-
-    public Job initAROWReg(Configuration conf, int iter, int nIter,
-                           int dim, float r, String weightPath) throws Exception {
-        conf.setInt(AROWRegTrainMapper.DIMENSION_CONFNAME, dim);
-        conf.setFloat(AROWRegTrainMapper.R_CONFNAME, r);
-
-        if (weightPath != null && weightPath != "") {
-            String cacheName = "weight";
-            DistributedCache.createSymlink(conf);
-            DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
-        }
-
-        String jobName = String.format("AROW Regression Train (%d in %d)", iter, nIter);
-
-        Job job = new Job(conf, jobName);
-        job.setJarByClass(LinearLearnerTrainRunner.class);
-        job.setMapperClass(AROWRegTrainMapper.class);
-        job.setReducerClass(WeightVectorAverageReducer.class);
-
-        job.setMapOutputKeyClass(IntWritable.class);
-        job.setMapOutputValueClass(PartedWeightVector.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(WeightVector.class);
-
-        job.setInputFormatClass(TextInputFormat.class);
-        job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
-        return job;
-    }
-
     private static void printUsage(Options opts) {
         HelpFormatter formatter = new HelpFormatter();
         formatter.setWidth(80);
@@ -169,19 +80,46 @@ public class LinearLearnerTrainRunner {
         for (int iter = 0; iter < nIter; iter++) {
             String output = String.format("%s/iter-%05d", outputBase, iter);
 
-            Job job = null;
             Configuration copiedConf = new Configuration(conf);
 
-            if (modelType == 0) {
-                job = trainRunner.initLogRegSGD(copiedConf, iter, nIter, dim, eta0, lambda, weightPath);
-            } else if (modelType == 1) {
-                job = trainRunner.initPAReg(copiedConf, iter, nIter, dim, C, epsilon, weightPath);
-            } else if (modelType == 2) {
-                job = trainRunner.initAROWReg(copiedConf, iter, nIter, dim, r, weightPath);
-            } else {
-                System.err.println("unkown modelType: " + modelType);
-                return;
+            conf.setInt(LinearLearnerTrainMapper.DIMENSION_CONFNAME, dim);
+            conf.setFloat(LinearLearnerTrainMapper.ETA0_CONFNAME, eta0);
+            conf.setFloat(LinearLearnerTrainMapper.LAMBDA_CONFNAME, lambda);
+            conf.setFloat(LinearLearnerTrainMapper.C_CONFNAME, C);
+            conf.setFloat(LinearLearnerTrainMapper.EPSILON_CONFNAME, epsilon);
+            conf.setFloat(LinearLearnerTrainMapper.R_CONFNAME, r);
+
+            if (weightPath != null && weightPath != "") {
+                String cacheName = "weight";
+                DistributedCache.createSymlink(conf);
+                DistributedCache.addCacheFile(new URI(weightPath + "#" + cacheName), conf);
             }
+
+            String jobName = "FailedJob";
+            if (modelType == 0) {
+                jobName = String.format("Logistic Regression SGD Train (%d in %d)", iter, nIter);
+                conf.setEnum(LinearLearnerTrainMapper.MODELTYPE_CONFNAME, LinearLearnerTrainMapper.ModelType.LOG_REG_SGD);
+            } else if (modelType == 1) {
+                jobName = String.format("PassiveAggressive Regression Train (%d in %d)", iter, nIter);
+                conf.setEnum(LinearLearnerTrainMapper.MODELTYPE_CONFNAME, LinearLearnerTrainMapper.ModelType.PA_REG);
+            } else if (modelType == 2) {
+                jobName = String.format("AROW Regression Train (%d in %d)", iter, nIter);
+                conf.setEnum(LinearLearnerTrainMapper.MODELTYPE_CONFNAME, LinearLearnerTrainMapper.ModelType.AROW_REG);
+            }
+
+            Job job = new Job(conf, jobName);
+            job.setJarByClass(LinearLearnerTrainRunner.class);
+            job.setMapperClass(LinearLearnerTrainMapper.class);
+            job.setReducerClass(WeightVectorAverageReducer.class);
+
+            job.setMapOutputKeyClass(IntWritable.class);
+            job.setMapOutputValueClass(PartedWeightVector.class);
+            job.setOutputKeyClass(Text.class);
+            job.setOutputValueClass(WeightVector.class);
+
+            job.setInputFormatClass(TextInputFormat.class);
+            job.setOutputFormatClass(SequenceFileOutputFormat.class);
+
 
             job.setNumReduceTasks(1);
 
