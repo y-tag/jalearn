@@ -4,7 +4,15 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.zip.GZIPInputStream;
+import java.util.Collections;
 import java.util.ArrayList;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -24,6 +32,15 @@ import myorg.classifier.LogRegSGDLearner;
 public class LinearLearnerTest {
 
     public static void main(String[] args) throws Exception {
+
+        Options opts = new Options();
+        opts.addOption("logistic", false, "Use logistic function for prediction.");
+
+        CommandLine cliParser = new GnuParser().parse(opts, args);
+        args = cliParser.getArgs();
+
+        boolean isLogisticUsed = cliParser.hasOption("logistic");
+
         if (args.length < 2) {
             System.err.println("Usage: test_file weight_file");
             return;
@@ -72,8 +89,11 @@ public class LinearLearnerTest {
 
         while ((line = testReader.readLine()) != null) {
             SVMLightFormatParser.parse(line, datum, isBiasUsed);
+
             float prediction = weight.innerProduct(datum);
-            prediction = 1.0f / (1.0f + (float)Math.exp(-prediction));
+            if (isLogisticUsed) {
+                prediction = 1.0f / (1.0f + (float)Math.exp(-prediction));
+            }
 
             ScoreStruct ss = new ScoreStruct();
             ss.value = prediction;
@@ -85,10 +105,70 @@ public class LinearLearnerTest {
         }
         testReader.close();
 
-        double auc = AUCCalculator.calcAUC(ssList);
+        Collections.sort(ssList);
 
-        System.out.println(auc);
+        double curAUROC = 0.0;
+        double curAUPRC = 0.0;
+        double curRMSE = 0.0;
+        double curMAE = 0.0;
+        double curNLL = 0.0;
 
+        double oldPosSum = 0.0;
+        double oldPrecision = 0.0;
+        double posNum = 0.0;
+        double posSum = 0.0;
+        double negNum = 0.0;
+        double negSum = 0.0;
+
+        float lastPredict = Float.MAX_VALUE;
+
+        for (ScoreStruct ss : ssList) {
+            if (lastPredict != ss.value && (posSum + negSum) > 0.0) {
+                curAUROC += (oldPosSum + posSum) * negNum / 2.0;
+                oldPosSum = posSum;
+                negNum = 0;
+
+                double precision = posSum / (posSum + negSum);
+                curAUPRC += (oldPrecision + precision) * posNum / 2.0;
+                oldPrecision = precision;
+                posNum = 0.0;
+            }
+
+            lastPredict = ss.value;
+            posNum += ss.positive;
+            posSum += ss.positive;
+            negNum += ss.negative;
+            negSum += ss.negative;
+
+            double y = (ss.positive > 0.0) ? 1.0 : 0.0;
+            curRMSE += Math.pow(y - ss.value, 2.0);
+            curMAE += Math.abs(y - ss.value);
+
+            double p = Math.max(Math.min(ss.value, 1.0 - 1.0e-15), 1.0e-15);
+            double tmp = (ss.positive > 0) ? p : (1.0 - p);
+            curNLL -= Math.log(tmp);
+        }
+
+        System.out.println(String.format("%s\t%d", "Number of samples", (long)(posSum + negSum)));
+        System.out.println(String.format("%s\t%d", "Number of positive samples", (long)posSum));
+        System.out.println(String.format("%s\t%d", "Number of negative samples", (long)negSum));
+
+        curAUROC += (oldPosSum + posSum) * negNum / 2.0;
+        curAUROC /= (posSum * negSum);
+        System.out.println(String.format("%s\t%.7f", "AUC", curAUROC));
+
+        double precision = posSum / (posSum + negSum);
+        curAUPRC += (oldPrecision + precision) * posNum / 2.0;
+        curAUPRC /= posSum;
+        System.out.println(String.format("%s\t%.7f", "AUPRC", curAUPRC));
+
+        curRMSE = Math.sqrt(curRMSE / (posSum + negSum));
+        System.out.println(String.format("%s\t%.7f", "RMSE", curRMSE));
+        
+        curMAE = curMAE / (posSum + negSum);
+        System.out.println(String.format("%s\t%.7f", "MAE", curMAE));
+
+        System.out.println(String.format("%s\t%.7f", "NLL", curNLL));
     }
 
 }
