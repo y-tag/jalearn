@@ -21,7 +21,7 @@ import myorg.util.AUCCalculator;
 import myorg.util.SVMLightFormatParser;
 import myorg.classifier.LogRegSGDLearner;
 
-public class LogRegSGDTest {
+public class LinearLearnerTest {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 2) {
