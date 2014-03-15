@@ -44,7 +44,8 @@ public class LinearLearnerTrainRunner {
         opts.addOption("modelType", true,
             "Type of model and learning method.\n" +
             "0: Logistic regression using SGD and simple weight averaging\n" +
-            "1: PassiveAggressive regression using simple weight averaging"
+            "1: PassiveAggressive regression using simple weight averaging\n" +
+            "2: AROW regression using simple weight averaging\n" +
         );
         opts.addOption("dim", true, "Number of weight vector dimension.");
         opts.addOption("eta0", true, "Initial value of learning rate.");
@@ -112,7 +113,7 @@ public class LinearLearnerTrainRunner {
             job.setMapperClass(LinearLearnerTrainMapper.class);
             job.setReducerClass(WeightVectorAverageReducer.class);
 
-            job.setMapOutputKeyClass(IntWritable.class);
+            job.setMapOutputKeyClass(VectorInfo.class);
             job.setMapOutputValueClass(PartedWeightVector.class);
             job.setOutputKeyClass(Text.class);
             job.setOutputValueClass(WeightVector.class);
@@ -131,6 +132,7 @@ public class LinearLearnerTrainRunner {
             job.waitForCompletion(true);
 
             weightPath = output + "/part-r-00000";
+            conf = copiedConf;
         }
     }
 }

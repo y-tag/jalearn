@@ -26,7 +26,7 @@ import myorg.classifier.LogRegSGDLearner;
 import myorg.regression.PARegLearner;
 import myorg.regression.AROWRegLearner;
 
-public class LinearLearnerTrainMapper extends Mapper<Object, Text, IntWritable, PartedWeightVector> {
+public class LinearLearnerTrainMapper extends Mapper<Object, Text, VectorInfo, PartedWeightVector> {
 
     public enum ModelType {
         LOG_REG_SGD, PA_REG, AROW_REG
@@ -40,6 +40,7 @@ public class LinearLearnerTrainMapper extends Mapper<Object, Text, IntWritable, 
     public static String EPSILON_CONFNAME = "myorg.examples.hadoop.LinearLearnerTrainMapper.epsilon";
     public static String R_CONFNAME = "myorg.examples.hadoop.LinearLearnerTrainMapper.r";
 
+    private ModelType modelType;
     private LinearLearner learner;
     private FeatureVector datum;
 
@@ -50,7 +51,7 @@ public class LinearLearnerTrainMapper extends Mapper<Object, Text, IntWritable, 
     protected void setup(Context context) throws IOException, InterruptedException {
         Configuration conf = context.getConfiguration();
 
-        ModelType modelType = conf.getEnum(MODELTYPE_CONFNAME, ModelType.LOG_REG_SGD);
+        modelType = conf.getEnum(MODELTYPE_CONFNAME, ModelType.LOG_REG_SGD);
         int dim    = conf.getInt(DIMENSION_CONFNAME, 1 << 24);
         float eta0   = conf.getFloat(ETA0_CONFNAME, 1e-1f);
         float lambda = conf.getFloat(LAMBDA_CONFNAME, 1e-6f);
@@ -78,15 +79,20 @@ public class LinearLearnerTrainMapper extends Mapper<Object, Text, IntWritable, 
 
                     if (keyClass == Text.class && valClass == WeightVector.class) {
                         Text key = new Text();
-                        weight = new WeightVector();
+                        WeightVector wv = new WeightVector();
 
-                        while (reader.next(key, weight)) {
-                            break;
+                        while (reader.next(key, wv)) {
+                            String keyString = key.toString();
+                            if (keyString.equals("weight")) {
+                                weight = wv;
+                            } else if (keyString.equals("sigma")) {
+                                sigma = wv;
+                            }
+                            wv = new WeightVector();
                         }
                     }
 
                 } catch (Exception e) {
-                    weight = null;
                 } finally {
                     reader.close();
                 }
@@ -124,9 +130,12 @@ public class LinearLearnerTrainMapper extends Mapper<Object, Text, IntWritable, 
                 throw new RuntimeException("r is less than or equal to 0.0");
             }
 
-            sigma = new WeightVector(weight.getDimensions());
-            for (int i = 0; i < sigma.getDimensions(); i++) {
-                sigma.setValue(i, 1.0f);
+            if (sigma == null) {
+                System.err.println("new sigma vector is created");
+                sigma = new WeightVector(weight.getDimensions());
+                for (int i = 0; i < sigma.getDimensions(); i++) {
+                    sigma.setValue(i, 1.0f);
+                }
             }
 
             System.err.println(String.format("AROW Regression, r = %f", r));
@@ -151,8 +160,18 @@ public class LinearLearnerTrainMapper extends Mapper<Object, Text, IntWritable, 
         if (splitSize > dim) { splitSize = dim; }
         List<PartedWeightVector> list = learner.getWeight().splitAsPartedWeightVector(splitSize);
 
+        VectorInfo vi = new VectorInfo(id, "weight");
         for (PartedWeightVector pwv : list) {
-            context.write(new IntWritable(id), pwv);
+            context.write(vi, pwv);
+        }
+
+        if (modelType == ModelType.AROW_REG) {
+            list = ((AROWRegLearner)learner).getSigma().splitAsPartedWeightVector(splitSize);
+
+            vi.setVectorType("sigma");
+            for (PartedWeightVector pwv : list) {
+                context.write(vi, pwv);
+            }
         }
     }
 }
