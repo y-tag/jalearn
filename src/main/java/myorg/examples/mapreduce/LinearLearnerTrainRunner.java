@@ -45,7 +45,7 @@ public class LinearLearnerTrainRunner {
             "Type of model and learning method.\n" +
             "0: Logistic regression using SGD and simple weight averaging\n" +
             "1: PassiveAggressive regression using simple weight averaging\n" +
-            "2: AROW regression using simple weight averaging\n" +
+            "2: AROW regression using simple weight averaging"
         );
         opts.addOption("dim", true, "Number of weight vector dimension.");
         opts.addOption("eta0", true, "Initial value of learning rate.");
